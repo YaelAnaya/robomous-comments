@@ -46,27 +46,3 @@ jobs:
 
           echo "discussion_id=$discussionId" >> $GITHUB_ENV
           echo "discussion_url=$discussionUrl" >> $GITHUB_ENV
-
-      - name: Update Sanity Document
-        env:
-          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
-          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
-          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
-        run: |
-          curl -X POST \
-            -H "Authorization: Bearer $SANITY_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "mutations": [
-                {
-                  "patch": {
-                    "id": "'"${{ github.event.client_payload._id }}"'",
-                    "set": {
-                      "discussionId": "'"$discussion_id"'",
-                      "discussionUrl": "'"$discussion_url"'"
-                    }
-                  }
-                }
-              ]
-            }' \
-            https://$SANITY_PROJECT_ID.api.sanity.io/v1/data/mutate/$SANITY_DATASET

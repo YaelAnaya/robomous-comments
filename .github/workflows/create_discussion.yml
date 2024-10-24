@@ -1,8 +1,6 @@
 name: Create Discussion on Post Creation
 
 on:
-  workflow_call:
-  workflow_dispatch:
   repository_dispatch:
     types: [create_discussion]
     

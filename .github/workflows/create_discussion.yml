@@ -13,37 +13,7 @@ jobs:
           uses: actions/checkout@v4
         
         - name: Create a new Discussion
-          id: create-discussion
-          uses: abirismyname/create-discussion@v1.x
-          env:
-            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}      
-          with:
-            title: '${{ github.event.client_payload.slug }}'
-            body: |
-              "Discusión creada para el post: [Ver post](https://tu-blog.com/posts/${{ github.event.client_payload.slug }})"
-            repository-id: ${{ secrets.REPOSITORY_ID }}
-            category-id: ${{ secrets.CATEGORY_ID }}  
-        - name: Set discussion id to post
-          id: set-discussion-id
-          env:
-            SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
-            SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
-            SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
+          id: create-discussions
           run: |
-            curl -X POST \
-            -H "Authorization: Bearer $SANITY_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "mutations": [
-                {
-                  "patch": {
-                    "id": "'"${{ github.event.client_payload._id }}"'",
-                    "set": {
-                      "discussionId": "'"${{ steps.create-discussion.outputs.discussion-id }}"'",
-                    }
-                  }
-                }
-              ]
-            }' \
-            https://$SANITY_PROJECT_ID.api.sanity.io/v1/data/mutate/$SANITY_DATASET
+            echo '${{ github.event }}'
 

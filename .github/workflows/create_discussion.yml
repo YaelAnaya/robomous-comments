@@ -16,7 +16,10 @@ jobs:
           id: create-discussion
           uses: abirismyname/create-discussion@v1.x
           env:
-            GH_TOKEN: ${{ secrets.TOKEN }}      
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}      
+            SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+            SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+            SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
           with:
             title: '${{ github.event.client_payload.slug }}'
             body: |
@@ -25,6 +28,20 @@ jobs:
             category-id: ${{ secrets.CATEGORY_ID }}  
         - name: Print discussion url and id
           run: |
-            echo discussion-id: ${{steps.create-discussion.outputs.discussion-id}} 
-            echo discussion-url: ${{steps.create-discussion.outputs.discussion-url}}    
+            curl -X POST \
+            -H "Authorization: Bearer $SANITY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "mutations": [
+                {
+                  "patch": {
+                    "id": "'"${{ github.event.client_payload._id }}"'",
+                    "set": {
+                      "discussionId": "'"${{ steps.create-discussion.outputs.discussion-id }}"'",
+                    }
+                  }
+                }
+              ]
+            }' \
+            https://$SANITY_PROJECT_ID.api.sanity.io/v1/data/mutate/$SANITY_DATASET
 

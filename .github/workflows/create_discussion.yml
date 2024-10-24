@@ -1,0 +1,72 @@
+name: Create Discussion on Post Creation
+
+on:
+  repository_dispatch:
+    types: [create_discussion]
+
+jobs:
+  create-discussion:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create GitHub Discussion
+        id: create-discussion
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          response=$(curl -X POST \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "query": "mutation ($repoId: ID!, $title: String!, $body: String!) {
+                createDiscussion(input: {
+                  repositoryId: $repoId,
+                  title: $title,
+                  body: $body
+                }) {
+                  discussion {
+                    id
+                    url
+                  }
+                }
+              }",
+              "variables": {
+                "repoId": "'"$GITHUB_REPOSITORY_ID"'",
+                "title": "Comentarios para: '${{ github.event.client_payload.slug }}'",
+                "body": "Discusión creada para el post: [Ver post](https://tu-blog.com/posts/${{ github.event.client_payload.slug }})"
+              }
+            }' \
+            https://api.github.com/graphql)
+
+          discussionId=$(echo $response | jq -r '.data.createDiscussion.discussion.id')
+          discussionUrl=$(echo $response | jq -r '.data.createDiscussion.discussion.url')
+
+          echo "discussion_id=$discussionId" >> $GITHUB_ENV
+          echo "discussion_url=$discussionUrl" >> $GITHUB_ENV
+
+      - name: Update Sanity Document
+        env:
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer $SANITY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "mutations": [
+                {
+                  "patch": {
+                    "id": "'"${{ github.event.client_payload._id }}"'",
+                    "set": {
+                      "discussionId": "'"$discussion_id"'",
+                      "discussionUrl": "'"$discussion_url"'"
+                    }
+                  }
+                }
+              ]
+            }' \
+            https://$SANITY_PROJECT_ID.api.sanity.io/v1/data/mutate/$SANITY_DATASET

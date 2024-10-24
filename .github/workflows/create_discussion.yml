@@ -16,15 +16,17 @@ jobs:
         id: create-discussion
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CATEGORY_ID: ${{ secrets.CATEGORY_ID }}
         run: |
           response=$(curl -X POST \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
-              "query": "mutation ($repoId: ID!, $title: String!, $body: String!) {
+              "query": "mutation ($repoId: ID!, $title: String!, $body: String!, $categoryId: ID!) {
                 createDiscussion(input: {
                   repositoryId: $repoId,
                   title: $title,
+                  categoryId: $categoryId
                   body: $body
                 }) {
                   discussion {
@@ -35,14 +37,9 @@ jobs:
               }",
               "variables": {
                 "repoId": "'"$GITHUB_REPOSITORY_ID"'",
+                "categoryId": "'"$CATEGORY_ID"'",
                 "title": "Comentarios para: '${{ github.event.client_payload.slug }}'",
                 "body": "Discusión creada para el post: [Ver post](https://tu-blog.com/posts/${{ github.event.client_payload.slug }})"
               }
             }' \
             https://api.github.com/graphql)
-
-          discussionId=$(echo $response | jq -r '.data.createDiscussion.discussion.id')
-          discussionUrl=$(echo $response | jq -r '.data.createDiscussion.discussion.url')
-
-          echo "discussion_id=$discussionId" >> $GITHUB_ENV
-          echo "discussion_url=$discussionUrl" >> $GITHUB_ENV

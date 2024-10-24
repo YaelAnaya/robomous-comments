@@ -17,16 +17,18 @@ jobs:
           uses: abirismyname/create-discussion@v1.x
           env:
             GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}      
-            SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
-            SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
-            SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
           with:
             title: '${{ github.event.client_payload.slug }}'
             body: |
               "Discusión creada para el post: [Ver post](https://tu-blog.com/posts/${{ github.event.client_payload.slug }})"
             repository-id: ${{ secrets.REPOSITORY_ID }}
             category-id: ${{ secrets.CATEGORY_ID }}  
-        - name: Print discussion url and id
+        - name: Set discussion id to post
+          id: set-discussion-id
+          env:
+            SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+            SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+            SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
           run: |
             curl -X POST \
             -H "Authorization: Bearer $SANITY_TOKEN" \

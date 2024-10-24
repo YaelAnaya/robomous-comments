@@ -14,45 +14,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 20.x  
-
-      - name: Create GitHub Discussion
-        id: create-discussion
-        
-        env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}
-          CATEGORY_ID: ${{ secrets.CATEGORY_ID }}
-        run: |
-          response=$(curl -X POST \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "query": "mutation ($repoId: ID!, $title: String!, $body: String!, $categoryId: ID!) {
-                createDiscussion(input: {
-                  repositoryId: $repoId,
-                  title: $title,
-                  categoryId: $categoryId
-                  body: $body
-                }) {
-                  discussion {
-                    id
-                    url
-                  }
-                }
-              }",
-              "variables": {
-                "repoId": "'"$GITHUB_REPOSITORY_ID"'",
-                "categoryId": "'"$CATEGORY_ID"'",
-                "title": "Comentarios para: '${{ github.event.client_payload.slug }}'",
-                "body": "Discusión creada para el post: [Ver post](https://tu-blog.com/posts/${{ github.event.client_payload.slug }})"
-              }
-            }' \
-            https://api.github.com/graphql)
-            
-      - name: Debug Response
-        run: |
-          echo "Response: $response"
+        - uses: actions/checkout@v4
+        - name: Create a new Discussion
+          id: create-discussion
+          uses: abirismyname/create-discussion@v1.x
+          env:
+            GH_TOKEN: ${{ secrets.TOKEN }}      
+          with:
+            title: '${{ github.event.client_payload.slug }}'
+            body: |
+              "Discusión creada para el post: [Ver post](https://tu-blog.com/posts/${{ github.event.client_payload.slug }})"
+            repository-id: ${{ secrets.REPOSITORY_ID }}
+            category-id: ${{ secrets.CATEGORY_ID }}  
+        - name: Print discussion url and id
+          run: |
+            echo discussion-id: ${{steps.create-discussion.outputs.discussion-id}} 
+            echo discussion-url: ${{steps.create-discussion.outputs.discussion-url}}    
 

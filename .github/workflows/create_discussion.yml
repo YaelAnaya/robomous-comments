@@ -2,7 +2,7 @@ name: Create Discussion on Post Creation
 
 on:
   repository_dispatch:
-    types: [create_discussion]
+    types: [manage_discussion]
     
 jobs:
   create-discussion:

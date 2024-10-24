@@ -4,11 +4,6 @@ on:
   repository_dispatch:
     types: [create_discussion]
     
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-  
 jobs:
   create-discussion:
     runs-on: ubuntu-latest

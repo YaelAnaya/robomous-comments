@@ -24,30 +24,35 @@ jobs:
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
-                "query": "mutation ($repoId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
-                  createDiscussion(input: {
-                    repositoryId: $repoId,
-                    categoryId: $categoryId,
-                    title: $title,
-                    body: $body
-                  }) {
-                    discussion {
-                      id
-                    }
+              "query": "mutation ($repoId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
+                createDiscussion(input: {
+                  repositoryId: $repoId,
+                  categoryId: $categoryId,
+                  title: $title,
+                  body: $body
+                }) {
+                  discussion {
+                    id
                   }
-                }",
-                "variables": {
-                  "repoId": ${{ secrets.REPOSITORY_ID }},
-                  "categoryId": ${{ secrets.CATEGORY_ID }},
-                  "title": ${{ github.event.client_payload.slug }},
-                  "body": "Post at: (https://robomous.ai/blog/${{ github.event.client_payload.slug }})"
                 }
-              }' \
-              https://api.github.com/graphql)
+              }",
+              "variables": {
+                "repoId": "'"${{ secrets.REPOSITORY_ID }}"'",
+                "categoryId": "'"${{ secrets.CATEGORY_ID }}"'",
+                "title": "'"${{ github.event.client_payload.slug }}"'",
+                "body": "Post at: (https://robomous.ai/blog/${{ github.event.client_payload.slug }})"
+              }
+            }' \
+            https://api.github.com/graphql)
 
-            discussionId=$(echo $response | jq -r '.data.createDiscussion.discussion.id')
+          discussionId=$(echo $response | jq -r '.data.createDiscussion.discussion.id')
 
-            echo "discussion_id=$discussionId" >> $GITHUB_ENV
+          if [ -z "$discussionId" ] || [ "$discussionId" == "null" ]; then
+            echo "Error: Failed to create discussion."
+            exit 1
+          fi
+
+          echo "discussion_id=$discussionId" >> $GITHUB_ENV
 
       # Agregar el discussionId al documento de Sanity
       - name: Update Sanity with Discussion ID
@@ -66,7 +71,7 @@ jobs:
                   "patch": {
                     "id": "'"${{ github.event.client_payload._id }}"'",
                     "set": {
-                      "discussionId": "'"$discussion_id"'",
+                      "discussionId": "'"$discussion_id"'"
                     }
                   }
                 }

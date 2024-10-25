@@ -16,15 +16,38 @@ jobs:
       - name: Create Discussion
         if: ${{ github.event.client_payload.operation == 'create' }}
         id: create-discussion
-        uses: abirismyname/create-discussion@v1.2.0
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          title: '${{ github.event.client_payload.slug }}'
-          body: |
-            "Discusión creada para el post: [Ver post](https://robomous.ai/blog/${{ github.event.client_payload.slug }})"
-          repository-id: ${{ secrets.REPOSITORY_ID }}
-          category-id: ${{ secrets.CATEGORY_ID }}
+
+        run: |
+          response=$(curl -X POST \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+                "query": "mutation ($repoId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
+                  createDiscussion(input: {
+                    repositoryId: $repoId,
+                    categoryId: $categoryId,
+                    title: $title,
+                    body: $body
+                  }) {
+                    discussion {
+                      id
+                    }
+                  }
+                }",
+                "variables": {
+                  "repoId": ${{ secrets.REPOSITORY_ID }},
+                  "categoryId": ${{ secrets.CATEGORY_ID }},
+                  "title": ${{ github.event.client_payload.slug }},
+                  "body": "Post at: (https://robomous.ai/blog/${{ github.event.client_payload.slug }})"
+                }
+              }' \
+              https://api.github.com/graphql)
+
+            discussionId=$(echo $response | jq -r '.data.createDiscussion.discussion.id')
+
+            echo "discussion_id=$discussionId" >> $GITHUB_ENV
 
       # Agregar el discussionId al documento de Sanity
       - name: Update Sanity with Discussion ID
@@ -43,7 +66,7 @@ jobs:
                   "patch": {
                     "id": "'"${{ github.event.client_payload._id }}"'",
                     "set": {
-                      "discussionId": "'"${{ steps.create-discussion.outputs.discussion-id }}"'"
+                      "discussionId": "'"$discussion_id"'",
                     }
                   }
                 }

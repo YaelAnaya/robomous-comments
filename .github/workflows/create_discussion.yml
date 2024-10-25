@@ -39,6 +39,7 @@ jobs:
                                }) {
                                  discussion {
                                    id
+                                   number
                                  }
                                }
                              }",

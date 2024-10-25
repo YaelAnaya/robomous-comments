@@ -1,23 +1,71 @@
-name: Create Discussion on Post Creation
+name: Manage Discussions for Post Events
 
 on:
   repository_dispatch:
     types: [manage_discussion]
-    
+
 jobs:
-  create-discussion:
+  manage-discussions:
     runs-on: ubuntu-latest
 
     steps:
-        - name: Checkout code
-          uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-        - name: Install jq
-          run: |
-            sudo apt-get update
-            sudo apt-get install -y jq
-  
-        - name: Print GitHub Event
-          run: |
-            echo '${{ toJson(github.event) }}' | jq .
+      # Condición para crear una discusión
+      - name: Create Discussion
+        if: ${{ github.event.client_payload.operation == 'create' }}
+        id: create-discussion
+        uses: abirismyname/create-discussion@v1.2.0
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          title: '${{ github.event.client_payload.slug }}'
+          body: |
+            "Discusión creada para el post: [Ver post](https://robomous.ai/blog/${{ github.event.client_payload.slug }})"
+          repository-id: ${{ secrets.REPOSITORY_ID }}
+          category-id: ${{ secrets.CATEGORY_ID }}
 
+      # Agregar el discussionId al documento de Sanity
+      - name: Update Sanity with Discussion ID
+        if: ${{ github.event.client_payload.operation == 'create' }}
+        env:
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer $SANITY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "mutations": [
+                {
+                  "patch": {
+                    "id": "'"${{ github.event.client_payload._id }}"'",
+                    "set": {
+                      "discussionId": "'"${{ steps.create-discussion.outputs.discussion-id }}"'"
+                    }
+                  }
+                }
+              ]
+            }' \
+            https://$SANITY_PROJECT_ID.api.sanity.io/v1/data/mutate/$SANITY_DATASET
+
+      # Condición para eliminar una discusión
+      - name: Delete Discussion
+        if: ${{ github.event.client_payload.operation == 'delete' && github.event.client_payload.discussionId != null }}
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "query": "mutation ($discussionId: ID!) {
+                deleteDiscussion(input: { id: $discussionId }) {
+                  clientMutationId
+                }
+              }",
+              "variables": {
+                "discussionId": "'"${{ github.event.client_payload.discussionId }}"'"
+              }
+            }' \
+            https://api.github.com/graphql

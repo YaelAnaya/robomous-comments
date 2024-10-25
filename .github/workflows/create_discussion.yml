@@ -17,7 +17,7 @@ jobs:
         if: ${{ github.event.client_payload.operation == 'create' }}
         id: create-discussion
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
         run: |
           response=$(curl -X POST \

@@ -17,37 +17,52 @@ jobs:
         if: ${{ github.event.client_payload.operation == 'create' }}
         id: create-discussion
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_ID: ${{ secrets.REPOSITORY_ID }}
+          CATEGORY_ID: ${{ secrets.CATEGORY_ID }}
+          TITLE: ${{ github.event.client_payload.slug }}
+          BODY: "Post at: (https://robomous.ai/blog/${{ github.event.client_payload.slug }})"
 
         run: |
+          # Construcción de JSON usando un método seguro
+          payload=$(jq -n --arg repoId "$REPO_ID" \
+                           --arg categoryId "$CATEGORY_ID" \
+                           --arg title "$TITLE" \
+                           --arg body "$BODY" \
+                           '{
+                             query: "mutation ($repoId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
+                               createDiscussion(input: {
+                                 repositoryId: $repoId,
+                                 categoryId: $categoryId,
+                                 title: $title,
+                                 body: $body
+                               }) {
+                                 discussion {
+                                   id
+                                 }
+                               }
+                             }",
+                             variables: {
+                               repoId: $repoId,
+                               categoryId: $categoryId,
+                               title: $title,
+                               body: $body
+                             }
+                           }')
+
+          # Realizar la solicitud a la API GraphQL de GitHub
           response=$(curl -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{
-              "query": "mutation ($repoId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
-                createDiscussion(input: {
-                  repositoryId: $repoId,
-                  categoryId: $categoryId,
-                  title: $title,
-                  body: $body
-                }) {
-                  discussion {
-                    id
-                  }
-                }
-              }",
-              "variables": {
-                "repoId": "'"${{ secrets.REPOSITORY_ID }}"'",
-                "categoryId": "'"${{ secrets.CATEGORY_ID }}"'",
-                "title": "'"${{ github.event.client_payload.slug }}"'",
-                "body": "Post at: (https://robomous.ai/blog/${{ github.event.client_payload.slug }})"
-              }
-            }' \
+            -d "$payload" \
             https://api.github.com/graphql)
 
-          echo "Response: $response" 
+          # Mostrar la respuesta para depuración
+          echo "Response: $response"
 
-          discussionId=$(echo $response | jq -r '.data.createDiscussion.discussion.id')
+          # Extraer el discussionId de la respuesta
+          discussionId=$(echo "$response" | jq -r '.data.createDiscussion.discussion.id')
+          discussionNum=$(echo "$response" | jq -r '.data.createDiscussion.discussion.number')
 
           if [ -z "$discussionId" ] || [ "$discussionId" == "null" ]; then
             echo "Error: Failed to create discussion."
@@ -55,6 +70,7 @@ jobs:
           fi
 
           echo "discussion_id=$discussionId" >> $GITHUB_ENV
+          echo "discussion_num=$discussionNum" >> $GITHUB_ENV
 
       # Agregar el discussionId al documento de Sanity
       - name: Update Sanity with Discussion ID
@@ -74,6 +90,7 @@ jobs:
                     "id": "'"${{ github.event.client_payload._id }}"'",
                     "set": {
                       "discussionId": "'"$discussion_id"'"
+                      "discussionNumber": "'"$discussion_num"'"
                     }
                   }
                 }
@@ -84,9 +101,11 @@ jobs:
       # Condición para eliminar una discusión
       - name: Delete Discussion
         if: ${{ github.event.client_payload.operation == 'delete' && github.event.client_payload.discussionId != null }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           curl -X POST \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
               "query": "mutation ($discussionId: ID!) {

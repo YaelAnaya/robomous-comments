@@ -76,7 +76,7 @@ jobs:
           DISCUSSION_ID: ${{ steps.create-discussion.outputs.discussion_id }}
           DISCUSSION_NUM: ${{ steps.create-discussion.outputs.discussion_num }}
         run: |
-          payload=$(jq -n --arg id "$DOCUMENT_ID" \
+            payload=$(jq -n --arg id "$DOCUMENT_ID" \
                              --arg discussionId "$DISCUSSION_ID" \
                              --arg discussionNum "$DISCUSSION_NUM" \
                              '{
@@ -85,21 +85,19 @@ jobs:
                                    patch: {
                                      id: $id,
                                      set: {
-                                       discussionId: $discussionId
+                                       discussionId: $discussionId,
                                        discussionNumber: $discussionNum
                                      }
                                    }
                                  }
                                ]
                              }')
-
+  
             curl -X POST \
               -H "Authorization: Bearer $SANITY_TOKEN" \
               -H "Content-Type: application/json" \
               -d "$payload" \
-              https://$SANITY_PROJECT_ID.api.sanity.io/v1/data/mutate/$SANITY_DATASET
-  
-
+              https://$SANITY_PROJECT_ID.api.sanity.io/v1/data/mutate/$SANITY_DATASET  
 
       - name: Delete Discussion
         if: ${{ github.event.client_payload.operation == 'delete' && github.event.client_payload.discussionId != null }}

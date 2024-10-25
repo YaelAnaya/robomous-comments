@@ -45,6 +45,8 @@ jobs:
             }' \
             https://api.github.com/graphql)
 
+          echo "Response: $response" 
+
           discussionId=$(echo $response | jq -r '.data.createDiscussion.discussion.id')
 
           if [ -z "$discussionId" ] || [ "$discussionId" == "null" ]; then

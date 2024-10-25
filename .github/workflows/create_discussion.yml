@@ -63,8 +63,8 @@ jobs:
             exit 1
           fi
 
-          echo "discussion_id=$discussionId" >> $GITHUB_ENV
-          echo "discussion_num=$discussionNum" >> $GITHUB_ENV
+          echo "discussion_id=$discussionId" >> $GITHUB_OUTPUT
+          echo "discussion_num=$discussionNum" >> $GITHUB_OUTPUT
 
       - name: Update Sanity with Discussion ID
         if: ${{ github.event.client_payload.operation == 'create' }}
@@ -74,9 +74,11 @@ jobs:
           SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
           DOCUMENT_ID: ${{ github.event.client_payload._id }}
           DISCUSSION_ID: ${{ steps.create-discussion.outputs.discussion_id }}
+          DISCUSSION_NUM: ${{ steps.create-discussion.outputs.discussion_num }}
         run: |
           payload=$(jq -n --arg id "$DOCUMENT_ID" \
                              --arg discussionId "$DISCUSSION_ID" \
+                             --arg discussionNum "$DISCUSSION_NUM" \
                              '{
                                mutations: [
                                  {
@@ -84,6 +86,7 @@ jobs:
                                      id: $id,
                                      set: {
                                        discussionId: $discussionId
+                                       discussionNumber: $discussionNum
                                      }
                                    }
                                  }

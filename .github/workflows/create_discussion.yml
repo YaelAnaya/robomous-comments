@@ -21,7 +21,7 @@ jobs:
 
         run: |
           response=$(curl -X POST \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Authorization: Bearer $GH_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
               "query": "mutation ($repoId: ID!, $categoryId: ID!, $title: String!, $body: String!) {

@@ -12,7 +12,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Condición para crear una discusión
       - name: Create Discussion
         if: ${{ github.event.client_payload.operation == 'create' }}
         id: create-discussion
@@ -24,7 +23,6 @@ jobs:
           BODY: "Post at: (https://robomous.ai/blog/${{ github.event.client_payload.slug }})"
 
         run: |
-          # Construcción de JSON usando un método seguro
           payload=$(jq -n --arg repoId "$REPO_ID" \
                            --arg categoryId "$CATEGORY_ID" \
                            --arg title "$TITLE" \
@@ -51,17 +49,12 @@ jobs:
                              }
                            }')
 
-          # Realizar la solicitud a la API GraphQL de GitHub
           response=$(curl -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Content-Type: application/json" \
             -d "$payload" \
             https://api.github.com/graphql)
 
-          # Mostrar la respuesta para depuración
-          echo "Response: $response"
-
-          # Extraer el discussionId de la respuesta
           discussionId=$(echo "$response" | jq -r '.data.createDiscussion.discussion.id')
           discussionNum=$(echo "$response" | jq -r '.data.createDiscussion.discussion.number')
 
@@ -73,33 +66,38 @@ jobs:
           echo "discussion_id=$discussionId" >> $GITHUB_ENV
           echo "discussion_num=$discussionNum" >> $GITHUB_ENV
 
-      # Agregar el discussionId al documento de Sanity
       - name: Update Sanity with Discussion ID
         if: ${{ github.event.client_payload.operation == 'create' }}
         env:
           SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
           SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
           SANITY_TOKEN: ${{ secrets.SANITY_TOKEN }}
+          DOCUMENT_ID: ${{ github.event.client_payload._id }}
+          DISCUSSION_ID: ${{ steps.create-discussion.outputs.discussion_id }}
         run: |
-          curl -X POST \
-            -H "Authorization: Bearer $SANITY_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "mutations": [
-                {
-                  "patch": {
-                    "id": "'"${{ github.event.client_payload._id }}"'",
-                    "set": {
-                      "discussionId": "'"$discussion_id"'"
-                      "discussionNumber": "'"$discussion_num"'"
-                    }
-                  }
-                }
-              ]
-            }' \
-            https://$SANITY_PROJECT_ID.api.sanity.io/v1/data/mutate/$SANITY_DATASET
+          payload=$(jq -n --arg id "$DOCUMENT_ID" \
+                             --arg discussionId "$DISCUSSION_ID" \
+                             '{
+                               mutations: [
+                                 {
+                                   patch: {
+                                     id: $id,
+                                     set: {
+                                       discussionId: $discussionId
+                                     }
+                                   }
+                                 }
+                               ]
+                             }')
 
-      # Condición para eliminar una discusión
+            curl -X POST \
+              -H "Authorization: Bearer $SANITY_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$payload" \
+              https://$SANITY_PROJECT_ID.api.sanity.io/v1/data/mutate/$SANITY_DATASET
+  
+
+
       - name: Delete Discussion
         if: ${{ github.event.client_payload.operation == 'delete' && github.event.client_payload.discussionId != null }}
         env:

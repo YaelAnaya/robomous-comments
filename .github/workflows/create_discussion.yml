@@ -2,7 +2,7 @@ name: Manage Discussions for Post Events
 
 on:
   repository_dispatch:
-    types: [manage_discussion]
+    types: [create_discussion]
 
 jobs:
   manage-discussions:
@@ -98,23 +98,3 @@ jobs:
               -H "Content-Type: application/json" \
               -d "$payload" \
               https://$SANITY_PROJECT_ID.api.sanity.io/v1/data/mutate/$SANITY_DATASET  
-
-      - name: Delete Discussion
-        if: ${{ github.event.client_payload.operation == 'delete' && github.event.client_payload.discussionId != null }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          curl -X POST \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "query": "mutation ($discussionId: ID!) {
-                deleteDiscussion(input: { id: $discussionId }) {
-                  clientMutationId
-                }
-              }",
-              "variables": {
-                "discussionId": "'"${{ github.event.client_payload.discussionId }}"'"
-              }
-            }' \
-            https://api.github.com/graphql

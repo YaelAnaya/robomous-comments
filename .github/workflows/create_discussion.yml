@@ -13,7 +13,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Create Discussion
-        if: ${{ github.event.client_payload.operation == 'create' }}
         id: create-discussion
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -67,7 +66,6 @@ jobs:
           echo "discussion_num=$discussionNum" >> $GITHUB_OUTPUT
 
       - name: Update Sanity with Discussion ID
-        if: ${{ github.event.client_payload.operation == 'create' }}
         env:
           SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
           SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
